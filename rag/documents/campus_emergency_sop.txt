@@ -1,0 +1,5 @@
+Campus emergency SOP:
+- Trigger facility response when rainfall exceeds 80 mm and standing water is present near pedestrian routes.
+- Notify Campus Security and Facilities Management immediately.
+- Close unsafe access points and redirect traffic away from the affected zone.
+- Check drainage channels and electrical equipment near flood-prone areas.
