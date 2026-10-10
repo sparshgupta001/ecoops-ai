@@ -23,9 +23,12 @@ from backend.models import (
     KnowledgeResponse,
     MonitorResponse,
     ScenarioSimulationResult,
+    SensorObservation,
+    SensorObservationInput,
     TaskStatusUpdate,
 )
 from backend.repositories.incident_repository import incident_repository
+from backend.repositories.sensor_repository import sensor_repository
 from backend.repositories.workflow_repository import workflow_repository
 from backend.services.ai_service import ai_service
 from backend.services.notification_service import notification_service
@@ -321,18 +324,86 @@ def get_incident(incident_id: str) -> dict[str, Any]:
     return incident
 
 
+@app.post("/api/sensors/ingest", response_model=SensorObservation, status_code=201)
+def ingest_sensor_observation(data: SensorObservationInput) -> dict[str, Any]:
+    now_iso = datetime.now(timezone.utc).isoformat()
+    raw_timestamp = data.timestamp
+    if raw_timestamp is None:
+        device_timestamp = now_iso
+    elif isinstance(raw_timestamp, datetime):
+        device_timestamp = raw_timestamp.isoformat()
+    else:
+        device_timestamp = str(raw_timestamp)
+
+    observation = {
+        "id": f"obs-{uuid.uuid4().hex[:12]}",
+        "sensor_id": data.sensor_id,
+        "source": data.source,
+        "location": data.location,
+        "rainfall": data.rainfall,
+        "water_level": data.water_level,
+        "forecast": data.forecast,
+        "timestamp": device_timestamp,
+        "ingested_at": now_iso,
+        "drainage_capacity": data.drainage_capacity,
+        "drainage_blockage": data.drainage_blockage,
+        "metadata": data.metadata,
+    }
+    persisted = sensor_repository.save_observation(observation)
+    logger.info("Ingested sensor observation from %s at %s", data.sensor_id, data.location)
+    return persisted
+
+
+@app.get("/api/sensors/latest", response_model=SensorObservation | None)
+def get_latest_sensor_observation() -> dict[str, Any] | None:
+    return sensor_repository.get_latest()
+
+
+@app.get("/api/sensors", response_model=list[SensorObservation])
+def list_sensor_observations() -> list[dict[str, Any]]:
+    return sensor_repository.list_observations()
+
+
 @app.get("/api/monitor", response_model=MonitorResponse)
 def get_monitor() -> dict[str, Any]:
     executions = sorted(workflow_repository.list_executions(), key=lambda item: item.get("started_at", ""), reverse=True)
     incidents = incident_repository.list_incidents()
-    latest = executions[0] if executions else None
+    latest_execution = executions[0] if executions else None
+
+    latest_sensor = sensor_repository.get_latest()
+    all_sensors = sensor_repository.list_observations()
+
+    if latest_sensor:
+        return {
+            "demo_mode": False,
+            "source": f"Live environmental sensor telemetry ({latest_sensor.get('sensor_id')} via {latest_sensor.get('source')})",
+            "data_freshness": latest_sensor.get("ingested_at") or latest_sensor.get("timestamp"),
+            "latest_readings": {
+                "sensor_id": latest_sensor.get("sensor_id"),
+                "location": latest_sensor.get("location"),
+                "rainfall": latest_sensor.get("rainfall"),
+                "water_level": latest_sensor.get("water_level"),
+                "forecast": latest_sensor.get("forecast", "normal"),
+                "drainage_capacity": latest_sensor.get("drainage_capacity"),
+                "drainage_blockage": latest_sensor.get("drainage_blockage"),
+                "timestamp": latest_sensor.get("timestamp"),
+                "source": latest_sensor.get("source"),
+            },
+            "recent_executions": executions[:10],
+            "incident_count": len(incidents),
+            "sensor_observation": latest_sensor,
+            "recent_sensor_observations": all_sensors[:10],
+        }
+
     return {
         "demo_mode": True,
-        "source": "Local scenario inputs and stored investigation records; no connected live sensor feed",
-        "data_freshness": latest.get("started_at") if latest else None,
-        "latest_readings": (latest or {}).get("input"),
+        "source": "Local scenario inputs and stored investigation records; no connected live sensor feed (Demo Fallback)",
+        "data_freshness": latest_execution.get("started_at") if latest_execution else None,
+        "latest_readings": (latest_execution or {}).get("input"),
         "recent_executions": executions[:10],
         "incident_count": len(incidents),
+        "sensor_observation": None,
+        "recent_sensor_observations": [],
     }
 
 

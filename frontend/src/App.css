@@ -167,13 +167,15 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .status-critical { color: #ff9da1; border-color: #713a3f; background: #3a2328; }
 .status-high { color: #ffb07d; border-color: #70442f; background: #382a23; }
 .status-medium, .status-awaiting_approval, .status-pending_approval { color: #f3d27f; border-color: #65542f; background: #332e20; }
-.status-low, .status-approved, .status-completed { color: #85deb0; border-color: #326347; background: #1b3328; }
+.status-low, .status-approved, .status-completed, .status-ingested { color: #85deb0; border-color: #326347; background: #1b3328; }
 .status-rejected, .status-failed, .status-blocked { color: #ff9da1; border-color: #713a3f; background: #3a2328; }
 .status-simulated, .status-open, .status-not_required { color: #aebdc2; }
 .notice { display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 5px; color: #bac8cd; font-size: 11px; line-height: 1.55; background: #13202a; }
 .notice > svg { flex: 0 0 auto; margin-top: 1px; color: var(--teal); }
 .notice strong { color: #e3ecee; }
 .notice-neutral { border-color: #294247; background: #122125; }
+.notice-success { border-color: #1e4d3f; background: #0e241e; color: #a5f3d0; }
+.notice-success > svg { color: var(--green); }
 .notice-error { border-color: #6d343a; color: #ffc3c5; background: #301e23; }
 .notice-error > svg { color: var(--red); }
 .notice-dismiss { margin: -3px -4px 0 auto; padding: 3px; color: inherit; border: 0; background: none; cursor: pointer; }

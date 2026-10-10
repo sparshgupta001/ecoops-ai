@@ -84,10 +84,12 @@ FastAPI automatically serves Swagger at:
 
 Key endpoints:
 - `GET /api/health`
+- `POST /api/sensors/ingest` (typed environmental sensor ingestion)
+- `GET /api/sensors` and `GET /api/sensors/latest`
 - `POST /api/analyze`
 - `GET /api/incidents`
 - `POST /api/simulate`
-- `GET /api/monitor`
+- `GET /api/monitor` (live telemetry with clearly labeled demo fallback)
 - `POST /api/scenarios/simulate` (side-effect-free what-if run)
 - `GET /api/executions` and `GET /api/executions/{execution_id}`
 - `GET /api/incidents/{incident_id}`
@@ -95,6 +97,36 @@ Key endpoints:
 - `PATCH /api/incidents/{incident_id}/tasks/{task_id}`
 - `GET /api/knowledge`
 - `GET /api/analytics` and `GET /api/analytics/incidents.csv`
+
+## Sensor Ingestion & Live Monitor
+EcoOps AI supports a typed, validated environmental sensor ingestion slice with device and timestamp provenance:
+- **Endpoint**: `POST /api/sensors/ingest`
+- **Payload fields**:
+  - `sensor_id` (string, required): Hardware identifier (e.g. `SEN-GATE-01`)
+  - `source` (string, optional): Telemetry source or network provenance (e.g. `campus_iot_mesh`)
+  - `location` (string, required): Monitored campus area
+  - `rainfall` (float, required): Rainfall intensity in mm (0 to 200)
+  - `water_level` (float, required): Standing water level percentage (0 to 200)
+  - `forecast` (string, optional): Forecast severity (`normal`, `watch`, `heavy`, `extreme`)
+  - `timestamp` (string/datetime, optional): Device measurement timestamp provenance
+  - `drainage_capacity`, `drainage_blockage` (float, optional): Capacity and blockage metrics
+- **Persistence**: Persisted locally in `data/sensor_observations.json` with generated server `ingested_at` timestamp.
+- **Live Monitor integration**:
+  - When observations are ingested, **Live Monitor** dynamically displays active sensor telemetry, live readings, and provenance metadata.
+  - When no observations are present, **Live Monitor** displays a clearly labeled **Demo Fallback Mode** referencing stored local scenario inputs.
+- **Example ingestion curl**:
+  ```bash
+  curl -X POST http://localhost:8000/api/sensors/ingest \
+    -H "Content-Type: application/json" \
+    -d '{
+      "sensor_id": "SEN-GATE-01",
+      "source": "campus_iot_mesh",
+      "location": "Gate 2",
+      "rainfall": 58.5,
+      "water_level": 42.0,
+      "forecast": "watch"
+    }'
+  ```
 
 ## Demo instructions
 1. Start the backend and frontend.
