@@ -132,7 +132,103 @@ function OverviewPage({ data, activeIncidents, onZone, selectedZone, onIncident 
 function MonitorPage({ data, onIncident }) {
   const monitor = data.monitor
   const readings = monitor?.latest_readings
-  return <div className="page-stack"><div className="notice notice-neutral"><Radio size={16} /><span><strong>Local demo mode.</strong> No sensor connection is configured. Readings come from the latest user-run analysis.</span></div><div className="two-column-layout"><section className="surface"><SectionHeader title="Latest observed input" detail={monitor?.data_freshness ? `Recorded ${formatTime(monitor.data_freshness)}` : 'No recorded input'} icon={Droplets} />{readings ? <div className="monitor-reading-grid"><ReadingTile label="Location" value={readings.location} icon={MapPin} /><ReadingTile label="Rainfall" value={readings.rainfall} unit="mm" icon={CloudRain} /><ReadingTile label="Standing water" value={readings.water_level} unit="%" icon={Droplets} /><ReadingTile label="Forecast" value={readings.forecast || 'normal'} unit="input" icon={Activity} /></div> : <EmptyState icon={Database} title="Waiting for a stored observation" detail="Submit an analysis or run a scenario." />}</section><section className="surface"><SectionHeader title="Data provenance" detail="Current runtime source" icon={Database} /><div className="provenance-list"><DataLine label="Mode" value="Local demo" /><DataLine label="Source" value="Stored investigation input" /><DataLine label="Sensor feed" value="Not configured" /><DataLine label="Last stored record" value={monitor?.data_freshness ? formatTime(monitor.data_freshness) : 'None'} /></div></section></div><section className="surface"><SectionHeader title="Recorded investigation runs" detail={`${monitor?.recent_executions?.length || 0} most recent executions`} icon={Workflow} />{monitor?.recent_executions?.length ? <ExecutionList executions={monitor.recent_executions} /> : <EmptyState icon={Radio} title="No recorded runs" detail="A record is created when an analysis is submitted." />}</section>{data.incidents.length > 0 && <section className="surface"><SectionHeader title="Incident-linked observations" detail="Open the incident to inspect its inputs" icon={AlertTriangle} /><IncidentTimeline incidents={data.incidents.slice(0, 5)} onIncident={onIncident} /></section>}</div>
+  const isLive = Boolean(monitor && !monitor.demo_mode && monitor.sensor_observation)
+  const sensor = monitor?.sensor_observation
+
+  return (
+    <div className="page-stack">
+      {isLive ? (
+        <div className="notice notice-success">
+          <Activity size={16} />
+          <span>
+            <strong>Live Sensor Telemetry Active.</strong> Ingested from sensor <code>{sensor?.sensor_id}</code> via <code>{sensor?.source}</code>. Provenance tracked and persisted locally.
+          </span>
+        </div>
+      ) : (
+        <div className="notice notice-neutral">
+          <Radio size={16} />
+          <span>
+            <strong>Demo Fallback Mode.</strong> No live telemetry feed connected yet. Showing stored local scenario inputs as demo fallback. Submit readings to <code>POST /api/sensors/ingest</code> to activate live telemetry.
+          </span>
+        </div>
+      )}
+
+      <div className="two-column-layout">
+        <section className="surface">
+          <SectionHeader
+            title={isLive ? "Latest sensor observation" : "Latest observed input"}
+            detail={monitor?.data_freshness ? `Recorded ${formatTime(monitor.data_freshness)}` : 'No recorded input'}
+            icon={isLive ? Activity : Droplets}
+          />
+          {readings ? (
+            <div className="monitor-reading-grid">
+              <ReadingTile label="Location" value={readings.location} icon={MapPin} />
+              <ReadingTile label="Rainfall" value={readings.rainfall} unit="mm" icon={CloudRain} />
+              <ReadingTile label="Standing water" value={readings.water_level} unit="%" icon={Droplets} />
+              <ReadingTile label="Forecast" value={readings.forecast || 'normal'} unit="input" icon={Activity} />
+            </div>
+          ) : (
+            <EmptyState icon={Database} title="Waiting for a stored observation" detail="Submit a sensor observation or run a scenario." />
+          )}
+        </section>
+
+        <section className="surface">
+          <SectionHeader title="Data provenance" detail="Current runtime source" icon={Database} />
+          <div className="provenance-list">
+            <DataLine label="Operating Mode" value={isLive ? "Live Telemetry" : "Demo Fallback"} />
+            <DataLine label="Sensor Feed" value={isLive ? (sensor?.sensor_id || 'Active') : 'Demo Fallback (No live feed)'} />
+            <DataLine label="Telemetry Source" value={isLive ? (sensor?.source || 'Local Ingest') : 'Stored scenario input'} />
+            <DataLine label="Sensor Timestamp" value={sensor?.timestamp ? formatTime(sensor.timestamp) : (monitor?.data_freshness ? formatTime(monitor.data_freshness) : 'None')} />
+            {isLive && sensor?.ingested_at && <DataLine label="Ingested At" value={formatTime(sensor.ingested_at)} />}
+          </div>
+        </section>
+      </div>
+
+      {monitor?.recent_sensor_observations?.length > 0 && (
+        <section className="surface">
+          <SectionHeader
+            title="Recent sensor telemetry observations"
+            detail={`${monitor.recent_sensor_observations.length} local observations ingested`}
+            icon={Activity}
+          />
+          <SensorObservationList observations={monitor.recent_sensor_observations} />
+        </section>
+      )}
+
+      <section className="surface">
+        <SectionHeader title="Recorded investigation runs" detail={`${monitor?.recent_executions?.length || 0} most recent executions`} icon={Workflow} />
+        {monitor?.recent_executions?.length ? <ExecutionList executions={monitor.recent_executions} /> : <EmptyState icon={Radio} title="No recorded runs" detail="A record is created when an analysis is submitted." />}
+      </section>
+
+      {data.incidents.length > 0 && (
+        <section className="surface">
+          <SectionHeader title="Incident-linked observations" detail="Open the incident to inspect its inputs" icon={AlertTriangle} />
+          <IncidentTimeline incidents={data.incidents.slice(0, 5)} onIncident={onIncident} />
+        </section>
+      )}
+    </div>
+  )
+}
+
+function SensorObservationList({ observations }) {
+  return (
+    <div className="monitor-execution-list">
+      {observations.map((obs) => (
+        <div className="monitor-execution" key={obs.id}>
+          <span className="execution-select-icon">
+            <Radio size={15} />
+          </span>
+          <div>
+            <strong>{obs.sensor_id} · {obs.location}</strong>
+            <small>
+              {obs.rainfall} mm rain · {obs.water_level}% water · {obs.source} · {formatTime(obs.timestamp)}
+            </small>
+          </div>
+          <StatusPill value="ingested" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function ControlTowerPage({ data, selectedId, onSelect }) {

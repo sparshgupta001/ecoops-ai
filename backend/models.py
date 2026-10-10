@@ -91,6 +91,38 @@ class ExecutionTraceRecord(BaseModel):
     incident_id: str | None = None
 
 
+class SensorObservation(BaseModel):
+    id: str
+    sensor_id: str
+    source: str
+    location: str
+    rainfall: float
+    water_level: float
+    forecast: str = "normal"
+    timestamp: str
+    ingested_at: str
+    drainage_capacity: float | None = None
+    drainage_blockage: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="allow")
+
+
+class SensorObservationInput(BaseModel):
+    sensor_id: str = Field(..., min_length=2, max_length=64)
+    source: str = Field(default="iot_telemetry", min_length=2, max_length=64)
+    location: str = Field(..., min_length=2, max_length=120)
+    rainfall: float = Field(..., ge=0, le=200)
+    water_level: float = Field(..., ge=0, le=200)
+    forecast: str = Field(default="normal")
+    timestamp: str | datetime | None = None
+    drainage_capacity: float | None = Field(default=None, ge=0, le=100)
+    drainage_blockage: float | None = Field(default=None, ge=0, le=100)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="allow")
+
+
 class MonitorResponse(BaseModel):
     demo_mode: bool
     source: str
@@ -98,6 +130,10 @@ class MonitorResponse(BaseModel):
     latest_readings: dict[str, Any] | None = None
     recent_executions: list[ExecutionTraceRecord] = Field(default_factory=list)
     incident_count: int
+    sensor_observation: SensorObservation | None = None
+    recent_sensor_observations: list[SensorObservation] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="allow")
 
 
 class KnowledgeDocument(BaseModel):
